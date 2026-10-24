@@ -558,7 +558,7 @@ void setup() {
 
   if (!SPIFFS.begin()) Serial.println("SPIFFS fail");
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
-    static const char page[] PROGMEM = R"rawliteral(<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Eye Display</title><link rel="stylesheet" href="style.css"></head><body><h1>Eye Display</h1><div id="status">Connecting...</div><div class="grid" id="anim-btns"></div><label>Idle: <input type="checkbox" id="idle-toggle" checked></label><label>Speed: <input type="range" id="speed-slider" min="2" max="20" value="12"> <span id="speed-val">12</span></label><script src="app.js"></script></body></html>)rawliteral";
+    static const char page[] PROGMEM = R"rawliteral(<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>eyeseeyou by elza</title><link rel="stylesheet" href="style.css"></head><body><h1>Eye Display</h1><div id="status">Connecting...</div><div class="grid" id="anim-btns"></div><label>Idle: <input type="checkbox" id="idle-toggle" checked></label><label>Speed: <input type="range" id="speed-slider" min="2" max="20" value="12"> <span id="speed-val">12</span></label><script src="app.js"></script></body></html>)rawliteral";
     req->send(200,"text/html", (const char*)page);
   });
   server.on("/state", HTTP_GET, [](AsyncWebServerRequest *req){
@@ -571,6 +571,18 @@ void setup() {
   server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *req){
     req->send(200,"application/javascript","const ANIMS=['WAKEUP','RESET','MOVE_RIGHT_BIG','MOVE_LEFT_BIG','BLINK_LONG','BLINK_SHORT','HAPPY','SLEEP','SACCADE_RANDOM'];const grid=document.getElementById('anim-btns');ANIMS.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>post('/api/anim',{anim:i});grid.appendChild(b);});document.getElementById('idle-toggle').onchange=e=>post('/api/idle',{enabled:e.target.checked});document.getElementById('speed-slider').oninput=e=>{document.getElementById('speed-val').textContent=e.target.value;post('/api/speed',{speed:parseInt(e.target.value)});};async function post(url,body){try{await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){console.error(e);}}async function poll(){try{const r=await fetch('/state');const s=await r.json();document.getElementById('status').textContent='IP: '+location.hostname+' | Anim: '+(ANIMS[s.anim]||s.anim)+' | '+(s.sleeping?'SLEEP':s.idle?'IDLE':'ACTIVE');}catch(e){document.getElementById('status').textContent='Disconnected';}}setInterval(poll,2000);poll();");
   });
+  server.on("/api/idle", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
+    [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
+      if(len==0){req->send(400,"application/json","{\"error\":\"empty\"}");return;}
+      StaticJsonDocument<32> d; if(!deserializeJson(d,(char*)data)&&d.containsKey("enabled")){web_idle_enabled=d["enabled"].as<bool>();req->send(200,"application/json","{\"ok\":true}");return;}
+      req->send(400,"application/json","{\"error\":\"invalid\"}");
+    });
+  server.on("/api/speed", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
+    [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
+      if(len==0){req->send(400,"application/json","{\"error\":\"empty\"}");return;}
+      StaticJsonDocument<32> d; if(!deserializeJson(d,(char*)data)&&d.containsKey("speed")){web_speed=constrain(d["speed"].as<int>(),2,20);req->send(200,"application/json","{\"ok\":true}");return;}
+      req->send(400,"application/json","{\"error\":\"invalid\"}");
+    });
   server.on("/api/anim", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
     [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
       StaticJsonDocument<64> d; if(!deserializeJson(d, (char*)data) && d.containsKey("anim")){int a=d["anim"];if(a>=0&&a<MAX_ANIMATIONS){pending_web_anim=a;req->send(200,"application/json","{\"ok\":true}");return;}}
