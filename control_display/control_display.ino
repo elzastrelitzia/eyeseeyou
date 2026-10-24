@@ -546,6 +546,19 @@ void setup() {
   Serial.begin(BAUD_RATE);
   g_init_display();
 
+#ifdef USE_WEB_CONTROL
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  Serial.print("Connecting");
+  unsigned long wifi_start = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - wifi_start < 15000) {
+    delay(250); Serial.print(".");
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println(); Serial.print("IP: "); Serial.println(WiFi.localIP());
+  } else Serial.println(" FAILED");
+#endif
+
   reset_eyes();
   // Send the "READY" signal BEFORE the delay to allow the host to sync up.
   Serial.println("READY");
