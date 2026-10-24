@@ -20,6 +20,7 @@ enum Animation {
   SACCADE_RANDOM,
   SNOW,
   BITMAP,
+  SAKURA,
   MAX_ANIMATIONS // Helper to get the count of animations
 };
 
@@ -205,6 +206,32 @@ const uint8_t PROGMEM frame1[512] = {
 };
 // Author :- Ashish ( ashish_y_794 )
 // Website : https://www.oledanimationmaker.com/
+
+void show_sakura_animation(unsigned long duration_ms = 5000) {
+  unsigned long start = millis();
+  int frame = 0;
+  while (millis() - start < duration_ms && pending_web_anim == SAKURA) {
+    g_clear_display();
+    int ox = (frame == 0) ? 4 : (frame == 1) ? -3 : 6;
+    int oy = (frame == 0) ? 0 : (frame == 1) ? 2 : -1;
+    int cx = 64, cy = 14;
+    for (int i = 0; i < 5; i++) {
+      double a = (-90.0 + i * 72.0) * 3.14159265 / 180.0;
+      int px = cx + int(cos(a) * 6 + ox);
+      int py = cy + int(sin(a) * 6 + oy);
+      for (int r = 0; r <= 6; r++)
+        for (int dy = -r; dy <= r; dy++)
+          for (int dx = -r; dx <= r; dx++)
+            if (dx*dx + dy*dy <= 36) g_draw_pixel(px + dx, py + dy, G_COLOR_WHITE);
+    }
+    for (int dy = -2; dy <= 2; dy++)
+      for (int dx = -2; dx <= 2; dx++)
+        if (dx*dx + dy*dy <= 4) g_draw_pixel(cx + dx, cy + dy, G_COLOR_WHITE);
+    g_update_display();
+    delay(300);
+    frame = (frame + 1) % 3;
+  }
+}
 
 void show_bitmap_animation(unsigned long duration_ms = 5000) {
   // Variant 1: 2 seconds
@@ -570,7 +597,7 @@ void setup() {
     req->send(200,"text/css","body{font-family:sans-serif;max-width:400px;margin:2rem auto;padding:1rem;background:#111;color:#fff}h1{font-size:1.4rem}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:1rem 0}button{padding:.8rem;border:none;border-radius:4px;background:#2563eb;color:#fff;font-size:.9rem}button:active{background:#1d4ed8}#status{margin:1rem 0;padding:.5rem;background:#1a1a1a;border-radius:4px;font-size:.85rem}label{display:block;margin:.5rem 0;font-size:.9rem}input[type=range]{width:100%}");
   });
   server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *req){
-    req->send(200,"application/javascript","const ANIMS=['WAKEUP','RESET','MOVE_RIGHT_BIG','MOVE_LEFT_BIG','BLINK_LONG','BLINK_SHORT','HAPPY','SLEEP','SACCADE_RANDOM','SNOW','BITMAP'];const grid=document.getElementById('anim-btns');ANIMS.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>post('/api/anim',{anim:i});grid.appendChild(b);});document.getElementById('idle-toggle').onchange=e=>post('/api/idle',{enabled:e.target.checked});async function post(url,body){try{await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){console.error(e);}}async function poll(){try{const r=await fetch('/state');const s=await r.json();document.getElementById('status').textContent='IP: '+location.hostname+' | Anim: '+(ANIMS[s.anim]||s.anim)+' | '+(s.sleeping?'SLEEP':s.idle?'IDLE':'ACTIVE');}catch(e){document.getElementById('status').textContent='Disconnected';}}setInterval(poll,2000);poll();");
+    req->send(200,"application/javascript","const ANIMS=['WAKEUP','RESET','MOVE_RIGHT_BIG','MOVE_LEFT_BIG','BLINK_LONG','BLINK_SHORT','HAPPY','SLEEP','SACCADE_RANDOM','SNOW','BITMAP','SAKURA'];const grid=document.getElementById('anim-btns');ANIMS.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>post('/api/anim',{anim:i});grid.appendChild(b);});document.getElementById('idle-toggle').onchange=e=>post('/api/idle',{enabled:e.target.checked});async function post(url,body){try{await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){console.error(e);}}async function poll(){try{const r=await fetch('/state');const s=await r.json();document.getElementById('status').textContent='IP: '+location.hostname+' | Anim: '+(ANIMS[s.anim]||s.anim)+' | '+(s.sleeping?'SLEEP':s.idle?'IDLE':'ACTIVE');}catch(e){document.getElementById('status').textContent='Disconnected';}}setInterval(poll,2000);poll();");
   });
   server.on("/api/idle", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
     [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
@@ -659,6 +686,9 @@ void launch_animation_with_index(int animation_index)
         case BITMAP:
           while (pending_web_anim == BITMAP) { show_bitmap_animation(5000); }
           break;
+        case SAKURA:
+          while (pending_web_anim == SAKURA) { show_sakura_animation(5000); }
+          break;
         default:
           // Do nothing for unknown animations
           break;
@@ -714,13 +744,13 @@ void loop() {
     sleeping = true;
     last_activity = now;
   } else if (sleeping && now - last_activity >= SLEEP_DURATION_MS) {
-    static bool show_snow_next = true;
-    if (show_snow_next) {
+    static bool snow_sakura = true;
+    if (snow_sakura) {
       show_snow_animation(5000);
     } else {
-      show_bitmap_animation(5000);
+      show_sakura_animation(5000);
     }
-    show_snow_next = !show_snow_next;
+    snow_sakura = !snow_sakura;
     wakeup();
     move_right_big_eye();
     move_left_big_eye();
