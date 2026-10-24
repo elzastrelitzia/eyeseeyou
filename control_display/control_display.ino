@@ -31,12 +31,15 @@ int idle_direction = 1;
 bool sleeping = false;
 
 #ifdef USE_WEB_CONTROL
+  #include <DNSServer.h>
+  #include <ESP8266WiFi.h>
   #include <ESPAsyncTCP.h>
   #include <ESPAsyncWebServer.h>
   #include <ArduinoJson.h>
   #include <FS.h>
 
   AsyncWebServer server(80);
+  DNSServer dnsServer;
   int pending_web_anim = -1;
   bool web_idle_enabled = true;
   int web_speed = 12;
@@ -550,7 +553,7 @@ void setup() {
   // Run as own hotspot: easier plug-in, no router needed
   WiFi.mode(WIFI_AP);
   WiFi.softAP(WIFI_SSID, WIFI_PASS);
-  Serial.print("AP started, ip: "); Serial.println(WiFi.softAPip());
+  Serial.print("AP started, ip: "); Serial.println(WiFi.softAPIP());
   delay(1000); // let AP settle before serving requests
 
   if (!SPIFFS.begin()) Serial.println("SPIFFS fail");
@@ -568,6 +571,11 @@ void setup() {
     });
   server.begin();
   Serial.println("Web server started");
+
+  // Captive portal redirect: all DNS queries -> ESP AP IP
+  DNSServer dnsServer;
+  dnsServer.setErrorReply(DNSReplyCode::NoError);
+  dnsServer.start(53, "*", WiFi.softAPIP());
 #endif
 
   reset_eyes();
