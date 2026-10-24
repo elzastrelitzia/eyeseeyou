@@ -573,7 +573,7 @@ void setup() {
   });
   server.on("/api/anim", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
     [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
-      StaticJsonDocument<64> d; if(deserializeJson(d,data,len)&&d.containsKey("anim")){int a=d["anim"];if(a>=0&&a<MAX_ANIMATIONS){pending_web_anim=a;req->send(200,"application/json","{\"ok\":true}");return;}}
+      StaticJsonDocument<64> d; if(!deserializeJson(d, (char*)data) && d.containsKey("anim")){int a=d["anim"];if(a>=0&&a<MAX_ANIMATIONS){pending_web_anim=a;req->send(200,"application/json","{\"ok\":true}");return;}}
       req->send(400,"application/json","{\"error\":\"invalid\"}");
     });
   server.begin();
