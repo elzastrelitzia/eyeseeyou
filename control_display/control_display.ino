@@ -558,7 +558,8 @@ void setup() {
 
   if (!SPIFFS.begin()) Serial.println("SPIFFS fail");
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
-    req->send(SPIFFS,"/index.html","text/html");
+    static const char page[] PROGMEM = R"rawliteral(<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Eye Display</title><link rel="stylesheet" href="style.css"></head><body><h1>Eye Display</h1><div id="status">Connecting...</div><div class="grid" id="anim-btns"></div><label>Idle: <input type="checkbox" id="idle-toggle" checked></label><label>Speed: <input type="range" id="speed-slider" min="2" max="20" value="12"> <span id="speed-val">12</span></label><script src="app.js"></script></body></html>)rawliteral";
+    req->send(200,"text/html", (const char*)page);
   });
   server.on("/state", HTTP_GET, [](AsyncWebServerRequest *req){
     StaticJsonDocument<256> d; d["anim"]=0; d["idle"]=true; d["speed"]=12;
@@ -573,7 +574,6 @@ void setup() {
   Serial.println("Web server started");
 
   // Captive portal redirect: all DNS queries -> ESP AP IP
-  DNSServer dnsServer;
   dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
   dnsServer.start(53, "*", WiFi.softAPIP());
 #endif
