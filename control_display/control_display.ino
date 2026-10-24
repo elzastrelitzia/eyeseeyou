@@ -547,16 +547,11 @@ void setup() {
   g_init_display();
 
 #ifdef USE_WEB_CONTROL
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  Serial.print("Connecting");
-  unsigned long wifi_start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - wifi_start < 15000) {
-    delay(250); Serial.print(".");
-  }
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println(); Serial.print("IP: "); Serial.println(WiFi.localIP());
-  } else Serial.println(" FAILED");
+  // Run as own hotspot: easier plug-in, no router needed
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(WIFI_SSID, WIFI_PASS);
+  Serial.print("AP started, ip: "); Serial.println(WiFi.softAPip());
+  delay(1000); // let AP settle before serving requests
 
   if (!SPIFFS.begin()) Serial.println("SPIFFS fail");
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
