@@ -574,7 +574,7 @@ void setup() {
 
   // Captive portal redirect: all DNS queries -> ESP AP IP
   DNSServer dnsServer;
-  dnsServer.setErrorReply(DNSReplyCode::NoError);
+  dnsServer.setErrorReplyCode(DNSReplyCode::NoError);
   dnsServer.start(53, "*", WiFi.softAPIP());
 #endif
 
