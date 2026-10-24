@@ -21,9 +21,14 @@ enum Animation {
   MAX_ANIMATIONS // Helper to get the count of animations
 };
 
-// states for demo 
-int demo_mode = 1;
-int current_animation_index = 0;
+// Idle timings
+const unsigned long IDLE_BEFORE_SLEEP_MS = 10000;
+const unsigned long SLEEP_DURATION_MS = 10000;
+const unsigned long IDLE_MOVE_GAP_MS = 1280;
+unsigned long last_activity = 0;
+unsigned long last_idle_move = 0;
+int idle_direction = 1;
+bool sleeping = false;
 
 // --- Structs for better state management ---
 
@@ -93,14 +98,14 @@ void reset_eyes(bool update=true)
   left_eye.width = REF_EYE_WIDTH;
   right_eye.height = REF_EYE_HEIGHT;
   right_eye.width = REF_EYE_WIDTH;
-  
+
   left_eye.x = SCREEN_WIDTH / 2 - REF_EYE_WIDTH / 2 - REF_SPACE_BETWEEN_EYE / 2;
   left_eye.y = SCREEN_HEIGHT / 2;
   right_eye.x = SCREEN_WIDTH / 2 + REF_EYE_WIDTH / 2 + REF_SPACE_BETWEEN_EYE / 2;
   right_eye.y = SCREEN_HEIGHT / 2;
 
   corner_radius = REF_CORNER_RADIUS;
-  
+
   if (update) {
     draw_frame();
   }
@@ -160,7 +165,7 @@ void sleep()
   right_eye.height = (SCREEN_HEIGHT == 32) ? 1 : 2;
   right_eye.width = REF_EYE_WIDTH;
 
-  
+
   corner_radius = 0;
   draw_frame();
 }
@@ -175,14 +180,14 @@ void wakeup()
 #endif
   {
     left_eye.height = h;
-    right_eye.height = h;    
+    right_eye.height = h;
     int min_h_wake = (SCREEN_HEIGHT == 32) ? 1 : 2;
     int mapped_radius = map(h, min_h_wake, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS);
     // The corner radius can't be more than half the height, otherwise it distorts.
     corner_radius = min(mapped_radius, h / 2);
     draw_frame();
   }
-  
+
 
 }
 
@@ -198,7 +203,7 @@ void happy_eye()
 #endif
   {
     // Draw the "happy" lower eyelid shape for both eyes
-    g_draw_filled_triangle(left_eye.x - left_eye.width / 2 - 1, left_eye.y + offset, left_eye.x + left_eye.width / 2 + 1, left_eye.y + (SCREEN_HEIGHT == 32 ? 2 : 5) + offset, left_eye.x - left_eye.width / 2 - 1, left_eye.y + left_eye.height + offset, G_COLOR_BLACK);    
+    g_draw_filled_triangle(left_eye.x - left_eye.width / 2 - 1, left_eye.y + offset, left_eye.x + left_eye.width / 2 + 1, left_eye.y + (SCREEN_HEIGHT == 32 ? 2 : 5) + offset, left_eye.x - left_eye.width / 2 - 1, left_eye.y + left_eye.height + offset, G_COLOR_BLACK);
     g_draw_filled_triangle(right_eye.x + right_eye.width / 2 + 1, right_eye.y + offset, right_eye.x - right_eye.width / 2 - 2, right_eye.y + (SCREEN_HEIGHT == 32 ? 2 : 5) + offset, right_eye.x + right_eye.width / 2 + 1, right_eye.y + right_eye.height + offset, G_COLOR_BLACK);
     offset -= (SCREEN_HEIGHT == 32) ? 1 : 2;
     g_update_display();
@@ -213,7 +218,7 @@ void saccade(int direction_x, int direction_y)
   //quick movement of the eye, no size change. stay at position after movement, will not move back,  call again with opposite direction
   //direction == -1 :  move left
   //direction == 1 :  move right
-  
+
 #if (SCREEN_HEIGHT == 32)
   const int MOVEMENT_AMPLITUDE_X = 3;
   const int MOVEMENT_AMPLITUDE_Y = 2;
@@ -240,7 +245,7 @@ void saccade(int direction_x, int direction_y)
     draw_frame();
     delay(1);
   }
-  
+
 }
 
 void move_right_big_eye()
@@ -272,10 +277,10 @@ void move_big_eye(int direction)
   for(int i=0;i<3;i++)
   {
     left_eye.x += MOVEMENT_AMPLITUDE * direction;
-    right_eye.x += MOVEMENT_AMPLITUDE * direction;    
+    right_eye.x += MOVEMENT_AMPLITUDE * direction;
     right_eye.height -= BLINK_AMPLITUDE;
     left_eye.height -= BLINK_AMPLITUDE;
-    
+
     if (OVERSIZE_AMOUNT != 0) {
       EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
       target_eye->height += OVERSIZE_AMOUNT;
@@ -308,7 +313,7 @@ void move_big_eye(int direction)
   for(int i=0;i<3;i++)
   {
     left_eye.x -= MOVEMENT_AMPLITUDE * direction;
-    right_eye.x -= MOVEMENT_AMPLITUDE * direction;    
+    right_eye.x -= MOVEMENT_AMPLITUDE * direction;
     right_eye.height -= BLINK_AMPLITUDE;
     left_eye.height -= BLINK_AMPLITUDE;
 
@@ -324,7 +329,7 @@ void move_big_eye(int direction)
   for(int i=0;i<3;i++)
   {
     left_eye.x -= MOVEMENT_AMPLITUDE * direction;
-    right_eye.x -= MOVEMENT_AMPLITUDE * direction;    
+    right_eye.x -= MOVEMENT_AMPLITUDE * direction;
     right_eye.height += BLINK_AMPLITUDE;
     left_eye.height += BLINK_AMPLITUDE;
 
@@ -346,12 +351,12 @@ void setup() {
   Serial.begin(BAUD_RATE);
   g_init_display();
 
-  sleep();
-  g_update_display();
+  reset_eyes();
   // Send the "READY" signal BEFORE the delay to allow the host to sync up.
   Serial.println("READY");
   delay(3000);
-  
+
+  last_activity = millis();
 }
 
 
@@ -373,7 +378,7 @@ void launch_animation_with_index(int animation_index)
         case MOVE_LEFT_BIG:
           move_left_big_eye();
           break;
-        case BLINK_LONG:      
+        case BLINK_LONG:
           blink(12);
           delay(1000);
           break;
@@ -381,7 +386,7 @@ void launch_animation_with_index(int animation_index)
           blink(12);
           break;
         case HAPPY:
-          happy_eye();      
+          happy_eye();
           break;
         case SLEEP:
           sleep();
@@ -393,19 +398,19 @@ void launch_animation_with_index(int animation_index)
 #else
           for(int i=0;i<20;i++)
 #endif
-          { 
+          {
             int dir_x = random(-1, 2);
             int dir_y = random(-1, 2);
             saccade(dir_x,dir_y);
             delay(1);
             saccade(-dir_x,-dir_y);
-            delay(1);     
+            delay(1);
           }
           break;
         default:
           // Do nothing for unknown animations
           break;
-          
+
       }
 }
 
@@ -413,26 +418,13 @@ void launch_animation_with_index(int animation_index)
 
 void loop() {
 
-  if(demo_mode == 1)
-  {
-    // cycle animations
-    launch_animation_with_index(current_animation_index++);
-    if(current_animation_index >= MAX_ANIMATIONS)
-    {
-      current_animation_index = 0;
-    }
-  }
-
-  
   //send "Ax" for animation x  (ex. A2 will launch animation 2)
   if (Serial.available() > 0) {
     // Peek at the first character to see if it's a command start.
     char firstChar = Serial.peek();
     if (firstChar == 'A' || firstChar == 'a') {
-      demo_mode = 0; // Stop demo mode on first valid command
-
       // Read the command character 'A'
-      Serial.read(); 
+      Serial.read();
       // Read the integer part of the command. parseInt() is non-blocking
       int anim_index = Serial.parseInt();
 
@@ -445,7 +437,29 @@ void loop() {
       // Discard any unexpected characters in the buffer to prevent them from piling up.
       Serial.read();
     }
+    // Any serial traffic counts as activity
+    last_activity = millis();
+    sleeping = false;
   }
 
+  unsigned long now = millis();
 
+  if (!sleeping && now - last_activity >= IDLE_BEFORE_SLEEP_MS) {
+    sleep();
+    sleeping = true;
+    last_activity = now;
+  } else if (sleeping && now - last_activity >= SLEEP_DURATION_MS) {
+    wakeup();
+    move_right_big_eye();
+    move_left_big_eye();
+    blink();
+    blink();
+    reset_eyes();
+    sleeping = false;
+    last_activity = millis();
+  } else if (!sleeping && now - last_idle_move >= IDLE_MOVE_GAP_MS) {
+    move_big_eye(idle_direction);
+    idle_direction = -idle_direction;
+    last_idle_move = millis();
+  }
 }
