@@ -88,6 +88,24 @@ inline void g_draw_filled_round_rect(int x, int y, int w, int h, int r, int colo
 #endif
 }
 
+inline void g_draw_pixel(int x, int y, int color) {
+#if defined(USE_U8G2)
+    display.setDrawColor(color);
+    display.drawPixel(x, y);
+#elif defined(USE_ADAFRUIT_SSD1306)
+    display.drawPixel(x, y, color);
+#endif
+}
+
+inline void g_draw_line(int x0, int y0, int x1, int y1, int color) {
+#if defined(USE_U8G2)
+    display.setDrawColor(color);
+    display.drawLine(x0, y0, x1, y1);
+#elif defined(USE_ADAFRUIT_SSD1306)
+    display.drawLine(x0, y0, x1, y1, color);
+#endif
+}
+
 inline void g_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color) {
 #if defined(USE_U8G2)
     display.setDrawColor(color);

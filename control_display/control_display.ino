@@ -30,6 +30,92 @@ unsigned long last_idle_move = 0;
 int idle_direction = 1;
 bool sleeping = false;
 
+// snowflake animation constants
+#define NUM_FLAKES 20
+#define WIND_DX 1.2f
+#define WIND_DY 0.4f
+
+struct Flake {
+  float x, y;
+  float vx, vy;
+  float wobble;
+  float phase;
+  uint8_t size;
+};
+
+Flake flakes[NUM_FLAKES];
+
+void spawnFlake(Flake &f, bool randomPos) {
+  if (randomPos) {
+    f.x = random(0, SCREEN_WIDTH);
+    f.y = random(0, SCREEN_HEIGHT);
+  } else {
+    if (WIND_DX > 0 && random(0, 2) == 0) {
+      f.x = -random(1, 10);
+      f.y = random(0, SCREEN_HEIGHT);
+    } else if (WIND_DX < 0 && random(0, 2) == 0) {
+      f.x = SCREEN_WIDTH + random(1, 10);
+      f.y = random(0, SCREEN_HEIGHT);
+    } else {
+      f.x = random(0, SCREEN_WIDTH);
+      f.y = -random(1, 10);
+    }
+  }
+  float speedMul = 0.7 + random(0, 60) / 100.0;
+  f.vx = WIND_DX * speedMul;
+  f.vy = 0.6 * speedMul + WIND_DY;
+  f.wobble = 0.1 + random(0, 20) / 100.0;
+  f.phase = random(0, 628) / 100.0;
+  f.size = random(1, 4);
+}
+
+void drawFlake(const Flake &f) {
+  int x = (int)f.x;
+  int y = (int)f.y;
+  switch (f.size) {
+    case 1:
+      g_draw_pixel(x, y, G_COLOR_WHITE);
+      break;
+    case 2:
+      g_draw_pixel(x, y, G_COLOR_WHITE);
+      g_draw_pixel(x - 1, y, G_COLOR_WHITE);
+      g_draw_pixel(x + 1, y, G_COLOR_WHITE);
+      g_draw_pixel(x, y - 1, G_COLOR_WHITE);
+      g_draw_pixel(x, y + 1, G_COLOR_WHITE);
+      break;
+    case 3:
+      g_draw_line(x - 2, y, x + 2, y, G_COLOR_WHITE);
+      g_draw_line(x, y - 2, x, y + 2, G_COLOR_WHITE);
+      g_draw_line(x - 1, y - 1, x + 1, y + 1, G_COLOR_WHITE);
+      g_draw_line(x - 1, y + 1, x + 1, y - 1, G_COLOR_WHITE);
+      break;
+  }
+}
+
+void show_snow_animation(unsigned long duration_ms = 8000) {
+  for (int i = 0; i < NUM_FLAKES; i++) spawnFlake(flakes[i], true);
+
+  unsigned long start = millis();
+  while (millis() - start < duration_ms) {
+    g_clear_display();
+    for (int i = 0; i < NUM_FLAKES; i++) {
+      Flake &f = flakes[i];
+      f.phase += 0.1;
+      f.x += f.vx + sin(f.phase) * f.wobble;
+      f.y += f.vy;
+
+      bool offBottom = f.y >= SCREEN_HEIGHT;
+      bool offRight  = f.x >= SCREEN_WIDTH && WIND_DX > 0;
+      bool offLeft   = f.x < 0 && WIND_DX < 0;
+      if (offBottom || offRight || offLeft) spawnFlake(f, false);
+
+      drawFlake(f);
+    }
+    g_update_display();
+    delay(16);
+  }
+}
+
 // --- Structs for better state management ---
 
 // Structure to hold the reference state of the eyes
@@ -454,6 +540,7 @@ void loop() {
     sleeping = true;
     last_activity = now;
   } else if (sleeping && now - last_activity >= SLEEP_DURATION_MS) {
+    show_snow_animation(5000);
     wakeup();
     move_right_big_eye();
     move_left_big_eye();
