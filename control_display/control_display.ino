@@ -666,6 +666,15 @@ void loop() {
     sleeping = false;
   }
 
+#ifdef USE_WEB_CONTROL
+  if (pending_web_anim >= 0) {
+    launch_animation_with_index(pending_web_anim);
+    pending_web_anim = -1;
+    last_activity = millis();
+    sleeping = false;
+  }
+#endif
+
   unsigned long now = millis();
 
   if (!sleeping && now - last_activity >= IDLE_BEFORE_SLEEP_MS) {
