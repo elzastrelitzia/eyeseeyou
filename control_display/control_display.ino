@@ -565,6 +565,12 @@ void setup() {
     StaticJsonDocument<256> d; d["anim"]=0; d["idle"]=true; d["speed"]=12;
     String s; serializeJson(d,s); req->send(200,"application/json",s);
   });
+  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(200,"text/css","body{font-family:sans-serif;max-width:400px;margin:2rem auto;padding:1rem;background:#111;color:#fff}h1{font-size:1.4rem}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:1rem 0}button{padding:.8rem;border:none;border-radius:4px;background:#2563eb;color:#fff;font-size:.9rem}button:active{background:#1d4ed8}#status{margin:1rem 0;padding:.5rem;background:#1a1a1a;border-radius:4px;font-size:.85rem}label{display:block;margin:.5rem 0;font-size:.9rem}input[type=range]{width:100%}");
+  });
+  server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(200,"application/javascript","const ANIMS=['WAKEUP','RESET','MOVE_RIGHT_BIG','MOVE_LEFT_BIG','BLINK_LONG','BLINK_SHORT','HAPPY','SLEEP','SACCADE_RANDOM'];const grid=document.getElementById('anim-btns');ANIMS.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>post('/api/anim',{anim:i});grid.appendChild(b);});document.getElementById('idle-toggle').onchange=e=>post('/api/idle',{enabled:e.target.checked});document.getElementById('speed-slider').oninput=e=>{document.getElementById('speed-val').textContent=e.target.value;post('/api/speed',{speed:parseInt(e.target.value)});};async function post(url,body){try{await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){console.error(e);}}async function poll(){try{const r=await fetch('/state');const s=await r.json();document.getElementById('status').textContent='IP: '+location.hostname+' | Anim: '+(ANIMS[s.anim]||s.anim)+' | '+(s.sleeping?'SLEEP':s.idle?'IDLE':'ACTIVE');}catch(e){document.getElementById('status').textContent='Disconnected';}}setInterval(poll,2000);poll();");
+  });
   server.on("/api/anim", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
     [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
       StaticJsonDocument<64> d; if(deserializeJson(d,data,len)&&d.containsKey("anim")){int a=d["anim"];if(a>=0&&a<MAX_ANIMATIONS){pending_web_anim=a;req->send(200,"application/json","{\"ok\":true}");return;}}
