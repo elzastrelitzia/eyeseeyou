@@ -12,6 +12,15 @@
 #define USE_ADAFRUIT_SSD1306
 //#define USE_U8G2
 
+// --- WEB CONTROL CONFIGURATION ---
+// Uncomment to enable WiFi/web control (adds ~40 KB flash, ~8 KB RAM)
+#define USE_WEB_CONTROL
+// WiFi credentials (compile-time, trusted LAN only — no auth)
+#define WIFI_SSID "your-ssid"
+#define WIFI_PASS "your-password"
+// For captive portal fallback, uncomment:
+// #define USE_WIFI_MANAGER
+
 // --- Common Configuration ---
 #if defined(BOARD_ESP8266_NODEMCU) || defined(BOARD_ESP32)
   #define SCREEN_WIDTH  128
