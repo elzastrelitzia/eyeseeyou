@@ -2,7 +2,7 @@
  * Main unified file for eye animations.
  * Library selection is done in "config.h".
 */
-#include "display_wrapper.h" // Notre couche d'abstraction
+#include "display_wrapper.h" // Display abstraction layer
 
 // --- Constants ---
 const long BAUD_RATE = 115200;
@@ -35,10 +35,20 @@ struct EyeState {
   int y;
 };
 
-const int REF_EYE_HEIGHT = 40;
-const int REF_EYE_WIDTH = 40;
-const int REF_SPACE_BETWEEN_EYE = 10;
-const int REF_CORNER_RADIUS = 10;
+// Eye dimensions scaled by screen size
+#if (SCREEN_HEIGHT == 32)
+  // Optimized for 128x32 displays
+  const int REF_EYE_HEIGHT = 24;
+  const int REF_EYE_WIDTH  = 24;
+  const int REF_SPACE_BETWEEN_EYE = 6;
+  const int REF_CORNER_RADIUS = 8;
+#else
+  // Default for 128x64 displays
+  const int REF_EYE_HEIGHT = 40;
+  const int REF_EYE_WIDTH  = 40;
+  const int REF_SPACE_BETWEEN_EYE = 10;
+  const int REF_CORNER_RADIUS = 10;
+#endif
 
 // Current state of the eyes
 EyeState left_eye, right_eye;
@@ -98,6 +108,11 @@ void reset_eyes(bool update=true)
 
 void blink(int speed=12)
 {
+#if (SCREEN_HEIGHT == 32)
+  // 3 steps must close the eye: 3 * speed ~= REF_EYE_HEIGHT - 2
+  speed = (REF_EYE_HEIGHT - 2) / 3;
+  if (speed < 2) speed = 2;
+#endif
   reset_eyes(false); // Ensure starting from a clean state
   for(int i=0;i<3;i++)
   {
@@ -106,12 +121,12 @@ void blink(int speed=12)
 
      // Dynamically adjust corner_radius during blink
     int current_h = left_eye.height;
-    // Map current height (from min_blink_height to REF_EYE_HEIGHT) to a radius (from 1 to REF_CORNER_RADIUS)
-    int mapped_radius = map(current_h, 4, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS); // Assuming min height is 4
+    int min_h_blink = (SCREEN_HEIGHT == 32) ? 2 : 4;
+    int mapped_radius = map(current_h, min_h_blink, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS);
     corner_radius = min(mapped_radius, current_h / 2);
 
-    left_eye.width += 3;
-    right_eye.width += 3;
+    left_eye.width += (SCREEN_HEIGHT == 32) ? 2 : 3;
+    right_eye.width += (SCREEN_HEIGHT == 32) ? 2 : 3;
     draw_frame();
     delay(1);
   }
@@ -122,11 +137,12 @@ void blink(int speed=12)
 
     // Dynamically adjust corner_radius during blink
     int current_h = left_eye.height;
-    int mapped_radius = map(current_h, 4, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS);
+    int min_h_blink = (SCREEN_HEIGHT == 32) ? 2 : 4;
+    int mapped_radius = map(current_h, min_h_blink, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS);
     corner_radius = min(mapped_radius, current_h / 2);
 
-    left_eye.width -= 3;
-    right_eye.width -= 3;
+    left_eye.width -= (SCREEN_HEIGHT == 32) ? 2 : 3;
+    right_eye.width -= (SCREEN_HEIGHT == 32) ? 2 : 3;
     draw_frame();
     delay(1);
   }
@@ -139,9 +155,9 @@ void sleep()
 {
   reset_eyes(false);
 
-  left_eye.height = 2;
+  left_eye.height = (SCREEN_HEIGHT == 32) ? 1 : 2;
   left_eye.width = REF_EYE_WIDTH;
-  right_eye.height = 2;
+  right_eye.height = (SCREEN_HEIGHT == 32) ? 1 : 2;
   right_eye.width = REF_EYE_WIDTH;
 
   
@@ -152,11 +168,16 @@ void wakeup()
 {
   reset_eyes(false);
 
+#if (SCREEN_HEIGHT == 32)
+  for(int h = 1; h <= REF_EYE_HEIGHT; h += 1)
+#else
   for(int h = 2; h <= REF_EYE_HEIGHT; h += 2)
+#endif
   {
     left_eye.height = h;
     right_eye.height = h;    
-    int mapped_radius = map(h, 2, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS);
+    int min_h_wake = (SCREEN_HEIGHT == 32) ? 1 : 2;
+    int mapped_radius = map(h, min_h_wake, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS);
     // The corner radius can't be more than half the height, otherwise it distorts.
     corner_radius = min(mapped_radius, h / 2);
     draw_frame();
@@ -170,12 +191,16 @@ void happy_eye()
 {
   reset_eyes(true); // Draw the initial eyes to the screen
   int offset = REF_EYE_HEIGHT / 2;
+#if (SCREEN_HEIGHT == 32)
+  for(int i=0;i<5;i++)
+#else
   for(int i=0;i<10;i++)
+#endif
   {
     // Draw the "happy" lower eyelid shape for both eyes
-    g_draw_filled_triangle(left_eye.x - left_eye.width / 2 - 1, left_eye.y + offset, left_eye.x + left_eye.width / 2 + 1, left_eye.y + 5 + offset, left_eye.x - left_eye.width / 2 - 1, left_eye.y + left_eye.height + offset, G_COLOR_BLACK);    
-    g_draw_filled_triangle(right_eye.x + right_eye.width / 2 + 1, right_eye.y + offset, right_eye.x - right_eye.width / 2 - 2, right_eye.y + 5 + offset, right_eye.x + right_eye.width / 2 + 1, right_eye.y + right_eye.height + offset, G_COLOR_BLACK);
-    offset -= 2;
+    g_draw_filled_triangle(left_eye.x - left_eye.width / 2 - 1, left_eye.y + offset, left_eye.x + left_eye.width / 2 + 1, left_eye.y + (SCREEN_HEIGHT == 32 ? 2 : 5) + offset, left_eye.x - left_eye.width / 2 - 1, left_eye.y + left_eye.height + offset, G_COLOR_BLACK);    
+    g_draw_filled_triangle(right_eye.x + right_eye.width / 2 + 1, right_eye.y + offset, right_eye.x - right_eye.width / 2 - 2, right_eye.y + (SCREEN_HEIGHT == 32 ? 2 : 5) + offset, right_eye.x + right_eye.width / 2 + 1, right_eye.y + right_eye.height + offset, G_COLOR_BLACK);
+    offset -= (SCREEN_HEIGHT == 32) ? 1 : 2;
     g_update_display();
     delay(1);
   }
@@ -189,9 +214,15 @@ void saccade(int direction_x, int direction_y)
   //direction == -1 :  move left
   //direction == 1 :  move right
   
+#if (SCREEN_HEIGHT == 32)
+  const int MOVEMENT_AMPLITUDE_X = 3;
+  const int MOVEMENT_AMPLITUDE_Y = 2;
+  const int BLINK_AMPLITUDE = 2;
+#else
   const int MOVEMENT_AMPLITUDE_X = 8;
   const int MOVEMENT_AMPLITUDE_Y = 6;
   const int BLINK_AMPLITUDE = 8;
+#endif
 
   // Animate the saccade in a single loop for simplicity
   for(int i = 1; i <= 2; i++)
@@ -227,9 +258,15 @@ void move_big_eye(int direction)
   //direction == 1 :  move right
   reset_eyes(false);
 
+#if (SCREEN_HEIGHT == 32)
+  const int OVERSIZE_AMOUNT = 0;
+  const int MOVEMENT_AMPLITUDE = 1;
+  const int BLINK_AMPLITUDE = 2;
+#else
   const int OVERSIZE_AMOUNT = 1;
   const int MOVEMENT_AMPLITUDE = 2;
   const int BLINK_AMPLITUDE = 5;
+#endif
 
   // --- Move eyes out ---
   for(int i=0;i<3;i++)
@@ -239,9 +276,11 @@ void move_big_eye(int direction)
     right_eye.height -= BLINK_AMPLITUDE;
     left_eye.height -= BLINK_AMPLITUDE;
     
-    EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
-    target_eye->height += OVERSIZE_AMOUNT;
-    target_eye->width += OVERSIZE_AMOUNT;
+    if (OVERSIZE_AMOUNT != 0) {
+      EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
+      target_eye->height += OVERSIZE_AMOUNT;
+      target_eye->width += OVERSIZE_AMOUNT;
+    }
 
     draw_frame();
     delay(1);
@@ -253,9 +292,11 @@ void move_big_eye(int direction)
     right_eye.height += BLINK_AMPLITUDE;
     left_eye.height += BLINK_AMPLITUDE;
 
-    EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
-    target_eye->height += OVERSIZE_AMOUNT;
-    target_eye->width += OVERSIZE_AMOUNT;
+    if (OVERSIZE_AMOUNT != 0) {
+      EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
+      target_eye->height += OVERSIZE_AMOUNT;
+      target_eye->width += OVERSIZE_AMOUNT;
+    }
 
     draw_frame();
     delay(1);
@@ -271,9 +312,11 @@ void move_big_eye(int direction)
     right_eye.height -= BLINK_AMPLITUDE;
     left_eye.height -= BLINK_AMPLITUDE;
 
-    EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
-    target_eye->height -= OVERSIZE_AMOUNT;
-    target_eye->width -= OVERSIZE_AMOUNT;
+    if (OVERSIZE_AMOUNT != 0) {
+      EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
+      target_eye->height -= OVERSIZE_AMOUNT;
+      target_eye->width -= OVERSIZE_AMOUNT;
+    }
 
     draw_frame();
     delay(1);
@@ -285,9 +328,11 @@ void move_big_eye(int direction)
     right_eye.height += BLINK_AMPLITUDE;
     left_eye.height += BLINK_AMPLITUDE;
 
-    EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
-    target_eye->height -= OVERSIZE_AMOUNT;
-    target_eye->width -= OVERSIZE_AMOUNT;
+    if (OVERSIZE_AMOUNT != 0) {
+      EyeState* target_eye = (direction > 0) ? &right_eye : &left_eye;
+      target_eye->height -= OVERSIZE_AMOUNT;
+      target_eye->width -= OVERSIZE_AMOUNT;
+    }
 
     draw_frame();
     delay(1);
@@ -302,7 +347,6 @@ void setup() {
   g_init_display();
 
   sleep();
-  // Note: Font/text drawing would also need to be abstracted if used outside of setup.
   g_update_display();
   // Send the "READY" signal BEFORE the delay to allow the host to sync up.
   Serial.println("READY");
@@ -335,7 +379,7 @@ void launch_animation_with_index(int animation_index)
           break;
         case BLINK_SHORT:
           blink(12);
-          break; // This was missing, causing fall-through to HAPPY
+          break;
         case HAPPY:
           happy_eye();      
           break;
@@ -344,7 +388,11 @@ void launch_animation_with_index(int animation_index)
           break;
         case SACCADE_RANDOM:
           reset_eyes(true);
+#if (SCREEN_HEIGHT == 32)
+          for(int i=0;i<10;i++)
+#else
           for(int i=0;i<20;i++)
+#endif
           { 
             int dir_x = random(-1, 2);
             int dir_y = random(-1, 2);
@@ -353,7 +401,6 @@ void launch_animation_with_index(int animation_index)
             saccade(-dir_x,-dir_y);
             delay(1);     
           }
-          // BUG FIX: Moved the 'break' to the end of the case.
           break;
         default:
           // Do nothing for unknown animations
@@ -378,7 +425,6 @@ void loop() {
 
   
   //send "Ax" for animation x  (ex. A2 will launch animation 2)
-  // A more robust way to read from Serial
   if (Serial.available() > 0) {
     // Peek at the first character to see if it's a command start.
     char firstChar = Serial.peek();
@@ -388,7 +434,6 @@ void loop() {
       // Read the command character 'A'
       Serial.read(); 
       // Read the integer part of the command. parseInt() is non-blocking
-      // and reads digits until it hits a non-digit.
       int anim_index = Serial.parseInt();
 
       if (anim_index < MAX_ANIMATIONS) {
