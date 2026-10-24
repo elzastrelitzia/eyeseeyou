@@ -556,7 +556,6 @@ void setup() {
   Serial.print("AP started, ip: "); Serial.println(WiFi.softAPIP());
   delay(1000); // let AP settle before serving requests
 
-  if (!SPIFFS.begin()) Serial.println("SPIFFS fail");
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
     static const char page[] PROGMEM = R"rawliteral(<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>eyeseeyou by elza</title><link rel="stylesheet" href="style.css"></head><body><h1>Eye Display</h1><div id="status">Connecting...</div><div class="grid" id="anim-btns"></div><label>Idle: <input type="checkbox" id="idle-toggle" checked></label><script src="app.js"></script></body></html>)rawliteral";
     req->send(200,"text/html", (const char*)page);
@@ -698,7 +697,9 @@ void loop() {
 
   unsigned long now = millis();
 
-#if !defined(USE_WEB_CONTROL) || (defined(USE_WEB_CONTROL) && web_idle_enabled)
+  #ifdef USE_WEB_CONTROL
+  if (web_idle_enabled) {
+  #endif
   if (!sleeping && now - last_activity >= IDLE_BEFORE_SLEEP_MS) {
     sleep();
     sleeping = true;
@@ -724,5 +725,8 @@ void loop() {
     idle_direction = -idle_direction;
     last_idle_move = millis();
   }
-#endif
+  #ifdef USE_WEB_CONTROL
+  }
+  #endif
+  draw_frame(); // keep display alive
 }
