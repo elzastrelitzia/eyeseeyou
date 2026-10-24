@@ -557,6 +557,22 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     Serial.println(); Serial.print("IP: "); Serial.println(WiFi.localIP());
   } else Serial.println(" FAILED");
+
+  if (!SPIFFS.begin()) Serial.println("SPIFFS fail");
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *req){
+    req->send(SPIFFS,"/index.html","text/html");
+  });
+  server.on("/state", HTTP_GET, [](AsyncWebServerRequest *req){
+    StaticJsonDocument<256> d; d["anim"]=0; d["idle"]=true; d["speed"]=12;
+    String s; serializeJson(d,s); req->send(200,"application/json",s);
+  });
+  server.on("/api/anim", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
+    [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
+      StaticJsonDocument<64> d; if(deserializeJson(d,data,len)&&d.containsKey("anim")){int a=d["anim"];if(a>=0&&a<MAX_ANIMATIONS){pending_web_anim=a;req->send(200,"application/json","{\"ok\":true}");return;}}
+      req->send(400,"application/json","{\"error\":\"invalid\"}");
+    });
+  server.begin();
+  Serial.println("Web server started");
 #endif
 
   reset_eyes();
