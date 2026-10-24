@@ -30,6 +30,18 @@ unsigned long last_idle_move = 0;
 int idle_direction = 1;
 bool sleeping = false;
 
+#ifdef USE_WEB_CONTROL
+  #include <ESPAsyncTCP.h>
+  #include <ESPAsyncWebServer.h>
+  #include <ArduinoJson.h>
+  #include <FS.h>
+
+  AsyncWebServer server(80);
+  int pending_web_anim = -1;
+  bool web_idle_enabled = true;
+  int web_speed = 12;
+#endif
+
 // snowflake animation constants
 #define NUM_FLAKES 20
 #define WIND_DX 1.2f
