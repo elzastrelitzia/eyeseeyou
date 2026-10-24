@@ -654,10 +654,10 @@ void launch_animation_with_index(int animation_index)
           }
           break;
         case SNOW:
-          show_snow_animation(5000);
+          while (pending_web_anim == SNOW) { show_snow_animation(5000); }
           break;
         case BITMAP:
-          show_bitmap_animation(5000);
+          while (pending_web_anim == BITMAP) { show_bitmap_animation(5000); }
           break;
         default:
           // Do nothing for unknown animations
@@ -696,8 +696,9 @@ void loop() {
 
 #ifdef USE_WEB_CONTROL
   if (pending_web_anim >= 0) {
-    launch_animation_with_index(pending_web_anim);
-    pending_web_anim = -1;
+    int anim = pending_web_anim;
+    launch_animation_with_index(anim);
+    if (anim != SNOW && anim != BITMAP) pending_web_anim = -1;
     last_activity = millis();
     sleeping = false;
   }
