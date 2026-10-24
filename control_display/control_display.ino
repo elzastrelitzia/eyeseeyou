@@ -158,16 +158,21 @@ void blink(int speed=12)
 
 void sleep()
 {
-  reset_eyes(false);
-
-  left_eye.height = (SCREEN_HEIGHT == 32) ? 1 : 2;
-  left_eye.width = REF_EYE_WIDTH;
-  right_eye.height = (SCREEN_HEIGHT == 32) ? 1 : 2;
-  right_eye.width = REF_EYE_WIDTH;
-
-
-  corner_radius = 0;
-  draw_frame();
+  #if (SCREEN_HEIGHT == 32)
+    for(int h = REF_EYE_HEIGHT; h >= 1; h -= 1)
+  #else
+    for(int h = REF_EYE_HEIGHT; h >= 2; h -= 2)
+  #endif
+    {
+      left_eye.height = h;
+      right_eye.height = h;
+      int min_h = (SCREEN_HEIGHT == 32) ? 1 : 2;
+      int mapped_radius = map(h, min_h, REF_EYE_HEIGHT, 1, REF_CORNER_RADIUS);
+      corner_radius = min(mapped_radius, h / 2);
+      left_eye.width = REF_EYE_WIDTH;
+      right_eye.width = REF_EYE_WIDTH;
+      draw_frame();
+    }
 }
 void wakeup()
 {
