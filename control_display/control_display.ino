@@ -698,6 +698,7 @@ void loop() {
 
   unsigned long now = millis();
 
+#if !defined(USE_WEB_CONTROL) || (defined(USE_WEB_CONTROL) && web_idle_enabled)
   if (!sleeping && now - last_activity >= IDLE_BEFORE_SLEEP_MS) {
     sleep();
     sleeping = true;
@@ -723,4 +724,5 @@ void loop() {
     idle_direction = -idle_direction;
     last_idle_move = millis();
   }
+#endif
 }
