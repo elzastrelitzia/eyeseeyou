@@ -106,6 +106,15 @@ inline void g_draw_line(int x0, int y0, int x1, int y1, int color) {
 #endif
 }
 
+inline void g_draw_bitmap(int x, int y, const uint8_t *bitmap, int w, int h, int color) {
+#if defined(USE_U8G2)
+    display.setDrawColor(color);
+    display.drawXBM(x, y, w, h, bitmap);
+#elif defined(USE_ADAFRUIT_SSD1306)
+    display.drawBitmap(x, y, bitmap, w, h, color);
+#endif
+}
+
 inline void g_draw_filled_triangle(int x0, int y0, int x1, int y1, int x2, int y2, int color) {
 #if defined(USE_U8G2)
     display.setDrawColor(color);
