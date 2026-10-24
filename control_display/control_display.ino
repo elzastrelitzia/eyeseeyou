@@ -18,6 +18,8 @@ enum Animation {
   HAPPY,
   SLEEP,
   SACCADE_RANDOM,
+  SNOW,
+  BITMAP,
   MAX_ANIMATIONS // Helper to get the count of animations
 };
 
@@ -568,7 +570,7 @@ void setup() {
     req->send(200,"text/css","body{font-family:sans-serif;max-width:400px;margin:2rem auto;padding:1rem;background:#111;color:#fff}h1{font-size:1.4rem}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin:1rem 0}button{padding:.8rem;border:none;border-radius:4px;background:#2563eb;color:#fff;font-size:.9rem}button:active{background:#1d4ed8}#status{margin:1rem 0;padding:.5rem;background:#1a1a1a;border-radius:4px;font-size:.85rem}label{display:block;margin:.5rem 0;font-size:.9rem}input[type=range]{width:100%}");
   });
   server.on("/app.js", HTTP_GET, [](AsyncWebServerRequest *req){
-    req->send(200,"application/javascript","const ANIMS=['WAKEUP','RESET','MOVE_RIGHT_BIG','MOVE_LEFT_BIG','BLINK_LONG','BLINK_SHORT','HAPPY','SLEEP','SACCADE_RANDOM'];const grid=document.getElementById('anim-btns');ANIMS.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>post('/api/anim',{anim:i});grid.appendChild(b);});document.getElementById('idle-toggle').onchange=e=>post('/api/idle',{enabled:e.target.checked});async function post(url,body){try{await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){console.error(e);}}async function poll(){try{const r=await fetch('/state');const s=await r.json();document.getElementById('status').textContent='IP: '+location.hostname+' | Anim: '+(ANIMS[s.anim]||s.anim)+' | '+(s.sleeping?'SLEEP':s.idle?'IDLE':'ACTIVE');}catch(e){document.getElementById('status').textContent='Disconnected';}}setInterval(poll,2000);poll();");
+    req->send(200,"application/javascript","const ANIMS=['WAKEUP','RESET','MOVE_RIGHT_BIG','MOVE_LEFT_BIG','BLINK_LONG','BLINK_SHORT','HAPPY','SLEEP','SACCADE_RANDOM','SNOW','BITMAP'];const grid=document.getElementById('anim-btns');ANIMS.forEach((n,i)=>{const b=document.createElement('button');b.textContent=n;b.onclick=()=>post('/api/anim',{anim:i});grid.appendChild(b);});document.getElementById('idle-toggle').onchange=e=>post('/api/idle',{enabled:e.target.checked});async function post(url,body){try{await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});}catch(e){console.error(e);}}async function poll(){try{const r=await fetch('/state');const s=await r.json();document.getElementById('status').textContent='IP: '+location.hostname+' | Anim: '+(ANIMS[s.anim]||s.anim)+' | '+(s.sleeping?'SLEEP':s.idle?'IDLE':'ACTIVE');}catch(e){document.getElementById('status').textContent='Disconnected';}}setInterval(poll,2000);poll();");
   });
   server.on("/api/idle", HTTP_POST, [](AsyncWebServerRequest* r){}, NULL,
     [](AsyncWebServerRequest *req, uint8_t *data, size_t len, size_t, size_t){
@@ -650,6 +652,12 @@ void launch_animation_with_index(int animation_index)
             saccade(-dir_x,-dir_y);
             delay(1);
           }
+          break;
+        case SNOW:
+          show_snow_animation(5000);
+          break;
+        case BITMAP:
+          show_bitmap_animation(5000);
           break;
         default:
           // Do nothing for unknown animations
